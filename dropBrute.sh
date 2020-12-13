@@ -75,7 +75,7 @@ ipt='/usr/sbin/iptables'
 [ `date +'%s'` -lt 1320000000 ] && echo System date not set, aborting. && exit -1
 $ipt -N $iptChain >&/dev/null
 
-today=`date +'%b %d'`
+today=`date +'%a %b %d'`
 now=`date +'%s'`
 nowPlus=$((now + secondsToBan))
 
@@ -85,10 +85,12 @@ logLine()
   [ $((activityCounter++)) -eq 0 ] && echo Running dropBrute on `date` \($now\)
   [ "$1" == "" ] || echo "$1"
 }
+badIPS=$(logread|egrep "^$today"|fgrep dropbear|egrep -i 'login attempt for nonexistent user'\|'bad password attempt for'|sed 's/^.*from //'|sed 's/:.*$//')
+badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep openvpn|egrep 'indicate a possible active attack'\|'Fatal TLS error (check_tls_errors_co), restarting'|sed 's/.*openvpn[^:]*: \([^ ]*\):.*/\1/')
 
 # find new badIPs
-for badIP in `logread|egrep "^$today"|fgrep dropbear|egrep 'login attempt for nonexistent user'\|'bad password attempt for'|sed 's/^.*from //'|sed 's/:.*$//'|sort -u` ; do
-  found=`logread|egrep "^$today"|fgrep dropbear|egrep 'login attempt for nonexistent user'\|'bad password attempt for'|sed 's/^.*from //'|sed 's/:.*$//'|fgrep $badIP|wc -l`
+for badIP in `echo "$badIPS"|sort -u` ; do
+  found=`echo "$badIPS"|fgrep $badIP|wc -l`
   if [ $found -gt $allowedAttempts ] ; then
     if [ `egrep \ $badIP\$ $leaseFile|wc -l` -gt 0 ] ; then
        [ `egrep \ $badIP\$ $leaseFile|cut -f1 -d\ ` -gt 0 ] && sed -i 's/^.* '$badIP\$/$nowPlus\ $badIP\/ $leaseFile
