@@ -52,7 +52,7 @@ leaseFile=/etc/dropBrute.leases   # persists across reboots
 
 # This is the iptables chain that drop commands will go into.
 # you will need to put a reference in your firewall rules for this
-iptChain=dropBrute
+iptChain=input_wan_rule
 
 # the IP Tables drop rule
 iptDropRule='-j DROP'
@@ -85,8 +85,21 @@ logLine()
   [ $((activityCounter++)) -eq 0 ] && echo Running dropBrute on `date` \($now\)
   [ "$1" == "" ] || echo "$1"
 }
-badIPS=$(logread|egrep "^$today"|fgrep dropbear|egrep -i 'login attempt for nonexistent user'\|'bad password attempt for'|sed 's/^.*from //'|sed 's/:.*$//')
+badIPS=''
+# Method for 22.03 dropbear 'login attempt for nonexistent user'
+badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep dropbear|egrep -i 'login attempt for nonexistent user' -B 1 | egrep -i 'Child connection from ' | sed 's/^.*from //'|sed 's/:.*$//')
+
+# Method for 22.03 dropbear 'Bad password attempt'
+badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep dropbear|egrep -i 'bad password attempt for ' | sed 's/^.*from //'|sed 's/:.*$//')
+
+# Method from around 2020 for openvpn attacks
 badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep openvpn|egrep 'indicate a possible active attack'\|'Fatal TLS error (check_tls_errors_co), restarting'|sed 's/.*openvpn[^:]*: \([^ ]*\):.*/\1/')
+
+# Method for 22.03 sshd 'failed password for'
+badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep sshd|egrep -i 'failed password for' | sed 's/^.*from //'|sed 's/.port.*$//')
+
+# Method for 22.03 ssh 'Unable to negotiate with'
+badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep sshd|egrep -i 'unable to negotiate with' | sed 's/^.*with//'|sed 's/.port.*$//')
 
 # find new badIPs
 for badIP in `echo "$badIPS"|sort -u` ; do
