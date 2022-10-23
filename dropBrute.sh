@@ -101,6 +101,9 @@ badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep sshd|egrep -i 'failed pass
 # Method for 22.03 ssh 'Unable to negotiate with'
 badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep sshd|egrep -i 'unable to negotiate with' | sed 's/^.*with//'|sed 's/.port.*$//')
 
+# Method for 22.03 ssh 'Invalid user'
+badIPS=$(echo "$badIPS";logread|egrep "^$today"|fgrep sshd|egrep -iv 'Connection'|egrep -iv 'Disconnected'|egrep -i 'invalid user' | sed 's/^.*from//'|sed 's/.port.*$//')
+
 # find new badIPs
 for badIP in `echo "$badIPS"|sort -u` ; do
   found=`echo "$badIPS"|fgrep $badIP|wc -l`
