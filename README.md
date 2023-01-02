@@ -15,7 +15,7 @@ These installation instructions can be cut and paste into the terminal
 Retrieve the latest copy of dropBrute.sh from gitHub
 
 	DB=/usr/sbin/dropBrute.sh
-	curl -ko $DB https://raw.github.com/robzr/dropBrute/master/dropBrute.sh
+	curl -ko $DB https://raw.github.com/bryandhill/dropBrute/master/dropBrute.sh
 	chmod 755 $DB
 
 Optionally edit the variables in the header of this script to customise
