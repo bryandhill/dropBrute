@@ -5,7 +5,7 @@
 **Lightweight fail2ban alternative for OpenWRT**
 
 Runs via cron; inspects ssh log for brute force attacks and blocks via 
-iptables.  Includes whitelist and blacklist support.
+iptables.  Includes whitelist and blacklist support, and openssh-server support.
 
 Initial version posted 10/31/2011 at https://forum.openwrt.org/viewtopic.php?pid=224122
 
