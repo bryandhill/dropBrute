@@ -1,5 +1,9 @@
 ## dropBrute
 
+** I am still trying to maintain this. Please report any issues. I will make best effort.
+
+
+
 **Lightweight fail2ban alternative for OpenWRT**
 
 Runs via cron; inspects ssh log for brute force attacks and blocks via 
