@@ -75,7 +75,7 @@ ipt='/usr/sbin/iptables'
 [ `date +'%s'` -lt 1320000000 ] && echo System date not set, aborting. && exit -1
 $ipt -N $iptChain >&/dev/null
 
-today=`date +'%a %b %d'`
+today=`date +'%a %b %d' | sed -E 's/0(\d)/ \1/g'`
 now=`date +'%s'`
 nowPlus=$((now + secondsToBan))
 
