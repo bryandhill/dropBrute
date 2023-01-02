@@ -1,8 +1,6 @@
-## dropBrute
+# dropBrute
 
-** I am still trying to maintain this. Please report any issues. I will make best effort.
-
-
+## I am still trying to maintain this. Please report any issues. I will make best effort.
 
 **Lightweight fail2ban alternative for OpenWRT**
 
