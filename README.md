@@ -5,10 +5,11 @@
 **Lightweight fail2ban alternative for OpenWRT**
 
 Runs via cron; inspects ssh log for brute force attacks and blocks via 
-iptables.  Includes whitelist and blacklist support, and openssh-server support.
+fw4.  Includes whitelist and blacklist support, and openssh-server support.
 
 Initial version posted 10/31/2011 at https://forum.openwrt.org/viewtopic.php?pid=224122
 
+Updated for OpenWrt 22.03 using fw4 / netfilter
 
 ### Installation Instructions
 
@@ -24,14 +25,13 @@ Optionally edit the variables in the header of this script to customise
 
 	vi $DB
 
-Insert a reference for this rule in your firewall script before you accept ssh, something like:
+Setup fw4 "hook" scripts:
 
-	cat >>/etc/firewall.user <<_EOF_
-	WANIF=`uci get network.wan.ifname`
-	iptables -N dropBrute
-	iptables -I input_rule 1 -i $WANIF -p tcp --dport 22 -j dropBrute
-	iptables -I input_rule 2 -i $WANIF -p tcp --dport 22 -m state --state NEW -m limit --limit 6/min --limit-burst 6 -j ACCEPT
-	_EOF_
+	mkdir -p /usr/share/nftables.d/table-post/
+	mkdir -p /usr/share/nftables.d/chain-pre/input_wan/
+	echo 'jump drop_brute' > /usr/share/nftables.d/chain-pre/input_wan/inject_jump_drop_brute.nft
+	echo -e 'chain drop_brute {\n    comment "Drop Brute Block Chain"\n}\n' > /tmp/create_drop_brute.nft
+	ln -s /tmp/create_drop_brute.nft /usr/share/nftables.d/table-post/create_drop_brute.nft
 
 Run the script periodically out of cron:
 
