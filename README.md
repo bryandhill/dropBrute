@@ -9,7 +9,7 @@ fw4.  Includes whitelist and blacklist support, and openssh-server support.
 
 Initial version posted 10/31/2011 at https://forum.openwrt.org/viewtopic.php?pid=224122
 
-Updated for OpenWrt 22.03 using fw4 / netfilter
+Updated for OpenWrt 22.03 using fw4 / netfilter (**Will not work with fw3 or iptables, or OpenWrt versions before 22.03**)
 
 ### Installation Instructions
 
