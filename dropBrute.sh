@@ -9,12 +9,13 @@
 # 1) Optionally edit the variables in the header of this script to customise
 #    for your environment
 #
-# 2) Insert a reference for this rule in your firewall script before you
-#    accept ssh, something like:
+# 2) Setup fw4 custom scripts
 #
-#    iptables -N dropBrute
-#    iptables -I input_rule -i `uci get network.wan.ifname` -p tcp --dport 22 -j dropBrute
-#    iptables -I input_rule -i `uci get network.wan.ifname` -p tcp --dport 22 -m state --state NEW -m limit --limit 6/min --limit-burst 6 -j ACCEPT
+#    mkdir -p /usr/share/nftables.d/table-post/
+#    mkdir -p /usr/share/nftables.d/chain-pre/input_wan/
+#    echo 'jump drop_brute' > /usr/share/nftables.d/chain-pre/input_wan/inject_jump_drop_brute.nft
+#    echo -e 'chain drop_brute {\n    comment "Drop Brute Block Chain"\n}\n' > /tmp/create_drop_brute.nft
+#    ln -s /tmp/create_drop_brute.nft /usr/share/nftables.d/table-post/create_drop_brute.nft
 #
 # 3) Run the script periodically out of cron:
 #
@@ -38,7 +39,7 @@
 # Determines whether the status output is printed when nothing happens
 alwaysPrintStatus=0
 
-# How many bad attempts before banning. Only the log entries from the 
+# How many bad attempts before banning. Only the log entries from the
 # current day are checked.
 allowedAttempts=10
 
@@ -46,22 +47,13 @@ allowedAttempts=10
 # default is 7 days
 secondsToBan=$((7*60*60*24))
 
-# the "lease" file 
+# the "lease" file
 #leaseFile=/tmp/dropBrute.leases    # does not persist across reboots
 leaseFile=/etc/dropBrute.leases   # persists across reboots
 
-# This is the iptables chain that drop commands will go into.
-# you will need to put a reference in your firewall rules for this
-iptChain=input_wan_rule
-
-# the IP Tables drop rule
-iptDropRule='-j DROP'
-
-# the IP Tables whitelist rule
-iptWhiteRule='-j RETURN'
 
 # You can put default leasefile entries in the following space.
-# Syntax is simply "leasetime _space_ IP_or_network".  A leasetime of -1 is a 
+# Syntax is simply "leasetime _space_ IP_or_network".  A leasetime of -1 is a
 # whitelist entry, and a leastime of 0 is a permanent blacklist entry.
 MYNET=$(/bin/ipcalc.sh `uci get network.lan.ipaddr` `uci get network.lan.netmask` | awk -F= '/^NETWORK=/ {printf $2."/"} /^PREFIX=/ {print $2}')
 [ -f $leaseFile ] || cat <<__EOF__>>$leaseFile
@@ -70,10 +62,7 @@ __EOF__
 
 # End of user customizable variables (unless you know better :) )
 
-ipt='/usr/sbin/iptables'
-
 [ `date +'%s'` -lt 1320000000 ] && echo System date not set, aborting. && exit -1
-$ipt -N $iptChain >&/dev/null
 
 today=`date +'%a %b %d' | sed -E 's/0(\d)/ \1/g'`
 now=`date +'%s'`
@@ -116,23 +105,29 @@ for badIP in `echo "$badIPS"|sort -u` ; do
   fi
 done
 
+
+echo -e 'chain drop_brute {\n    comment "Drop Brute Block Chain"\n' > /tmp/create_drop_brute.nft.tmp
+
 # now parse the leaseFile
 while read lease ; do
   leaseTime=`echo $lease|cut -f1 -d\ `
   leaseIP=`echo $lease|cut -f2 -d\ `
   if [ $leaseTime -lt 0 ] ; then
-    if [ `$ipt -S $leaseChain|egrep \ $leaseIP/32\ \|\ $leaseIP\ |fgrep -- "$iptWhiteRule"| wc -l` -lt 1 ] ; then
-      logLine "Adding new whitelist rule for $leaseIP"
-      $ipt -I $iptChain -s $leaseIP $iptWhiteRule
-    fi
+    logLine "Whitelist rule for $leaseIP"
+    echo "    ip saddr $leaseIP return" >> /tmp/create_drop_brute.nft.tmp
   elif [ $leaseTime -ge 1 -a $now -gt $leaseTime ] ; then
     logLine "Expiring lease for $leaseIP"
-    $ipt -D $iptChain -s $leaseIP $iptDropRule
     sed -i /$leaseIP/d $leaseFile
-  elif [ $leaseTime -ge 0 -a `$ipt -S $leaseChain|egrep \ $leaseIP/32\ \|\ $leaseIP\ |wc -l` -lt 1 ] ; then
-    logLine Adding new rule for $leaseIP
-    $ipt -A $iptChain -s $leaseIP $iptDropRule
+  elif [ $leaseTime -ge 0 ] ; then
+    logLine "Drop rule for $leaseIP"
+    echo "    ip saddr $leaseIP drop" >> /tmp/create_drop_brute.nft.tmp
   fi
 done < $leaseFile
 
+echo -e '}\n' >> /tmp/create_drop_brute.nft.tmp
+
+mv /tmp/create_drop_brute.nft.tmp /tmp/create_drop_brute.nft
+
 [ $alwaysPrintStatus -gt 0 ] && logLine
+
+/etc/init.d/firewall restart
